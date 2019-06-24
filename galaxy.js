@@ -58,6 +58,7 @@ var batchcount = -5;
 var cycles = 250;
 var tracks = false;
 var spin = true;
+var simu = true; /*Andres: variable simu para ejecutar o detener simulación.*/
 
 function FLOATRAND() {
     return Math.random();
@@ -80,7 +81,9 @@ var DELTAT = (MAX_IDELTAT * 0.0001);
 
 var GALAXYRANGESIZE = 0.1;
 var GALAXYMINSIZE = 0.15;
-var QCONS = 0.001;
+var QCONS = 0.00006674; 
+/* Andres: original 0.001, gravitational constant 6.674x10^-11 Nm^2/kg^2 = 0.00000000006674, 
+used 6.674x10^-11 x 10^6 */
 
 var COLORBASE = 16;
 /* colors per galaxy */
@@ -140,12 +143,64 @@ function Universe() {
 
     this.onReady = function( parentNode ) {
         canvas_el = document.createElement( 'canvas' );
-        canvas_el.width = 1024;
-        canvas_el.height = 768;
+        canvas_el.width = 1366; /*Andres: Original 1024*/
+        canvas_el.height = 768; /*Andres: Original 768*/
         canvas_el.style.cssText = 'background-color: black; position: absolute; z-index: 500;';
         canvas_ctx = canvas_el.getContext( '2d' );
 
         parentNode.appendChild( canvas_el );
+
+        var num = 8.0,
+            keys = [];
+
+        function update() {
+
+            if (keys[38]) { //Andres: Zoom in with ArrowUp key.
+                if (num > 2.0){
+                    num--;
+                }
+                else {num = 2.0}
+            }
+
+            if (keys[40]) { //Andres: Zoom out with ArrowDown key.
+                if (num < 40.0){
+                    num++;
+                }
+                else {num = 40.0}
+            }
+
+            if (keys[80]) { //Andres: Pause simulation with P key.
+                simu = false;
+            }
+
+            if (keys[76]) { //Andres: Restart simulation with L key.
+                simu = true;
+            }
+
+            if (keys[83]) { //Andres: Stop spin with S key.
+                spin = false;
+            }
+
+            if (keys[87]) { //Andres: Restart spin with W key.
+                spin = true;
+            }
+            updateScale();
+            setTimeout(update, 10);
+        }
+
+        function updateScale() { //Andres: Actualiza escala.
+            var gp = universe;
+            gp.scale = (canvas_el.width + canvas_el.height) / num;
+        }
+
+        update();
+
+        document.body.addEventListener('keydown', function (e) { //Andres: Listener para keydown.
+            keys[e.keyCode] = true;
+        });
+        document.body.addEventListener('keyup', function (e) { //Andres: Listener para keyup.
+            keys[e.keyCode] = false;
+        });
 
         init_galaxy();
     }
@@ -287,10 +342,11 @@ function startover() {
 
 function init_galaxy() {
     var gp = universe;
+    var num = 8.0;
 
     gp.f_hititerations = cycles;
 
-    gp.scale = (canvas_el.width + canvas_el.height) / 8.0;
+    gp.scale = (canvas_el.width + canvas_el.height) / num; //Andres: Original 8.0
     gp.midx =  canvas_el.width  / 2;
     gp.midy =  canvas_el.height / 2;
     startover();
@@ -345,7 +401,8 @@ function draw_galaxy() {
                 v1 += d1 * d;
                 v2 += d2 * d;
             }
-
+            
+            if (simu){ /*Andres: si simu es TRUE actualiza velocidades y posiciones.*/
             st.vel.x = v0;
             st.vel.y = v1;
             st.vel.z = v2;
@@ -353,6 +410,7 @@ function draw_galaxy() {
             st.pos.x += v0;
             st.pos.y += v1;
             st.pos.z += v2;
+            } 
 
             newp.x = (((cox * st.pos.x) - (six * st.pos.z)) *
                 gp.scale) + gp.midx;
@@ -385,15 +443,20 @@ function draw_galaxy() {
             gtk.vel.z -= d2 * gt.mass;
         }
 
-        gt.pos.x += gt.vel.x * DELTAT;
-        gt.pos.y += gt.vel.y * DELTAT;
-        gt.pos.z += gt.vel.z * DELTAT;
+        if (simu){ /*Andres: si simu es TRUE dibuja los puntos y actualiza variables.*/
+            gt.pos.x += gt.vel.x * DELTAT;
+            gt.pos.y += gt.vel.y * DELTAT;
+            gt.pos.z += gt.vel.z * DELTAT;
 
-        XDrawPoints( gt );
+            XDrawPoints( gt );
 
-        dummy = gt.oldpoints;
-        gt.oldpoints = gt.newpoints;
-        gt.newpoints = dummy;
+            dummy = gt.oldpoints;
+            gt.oldpoints = gt.newpoints;
+            gt.newpoints = dummy;
+            } else {
+            XDrawPoints( gt ); /*Andres: si simu FALSE, dibuja los puntos, pero no actualiza variables.*/
+        }
+
     }
 
     gp.step++;
