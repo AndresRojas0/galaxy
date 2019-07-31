@@ -54,7 +54,7 @@ function NRAND( n ) {
 }
 
 var delay = 10;
-var batchcount = -5;
+var batchcount = 2; /* Original -5. */
 var cycles = 250;
 var tracks = false;
 var spin = true;
@@ -140,6 +140,7 @@ function Universe() {
     this.step = 0; /* */
     this.rot_y = 0.0; /* rotation of eye around center of universe, around y-axis*/
     this.rot_x = 0.0; /* rotation of eye around center of universe, around x-axis */
+    this.rot_z = 0.0; /* rotation of eye around center of universe, around z-axis */
 
     this.onReady = function( parentNode ) {
         canvas_el = document.createElement( 'canvas' );
@@ -147,13 +148,58 @@ function Universe() {
         canvas_el.height = 768; /*Andres: Original 768*/
         canvas_el.style.cssText = 'background-color: black; position: absolute; z-index: 500;';
         canvas_ctx = canvas_el.getContext( '2d' );
+        
+        var drag = false; //Para los mouse listener crea: drag, dragStart, dragEnd.
+        var dragStart;
+        var dragEnd;
+        var gp = universe; //Para manipular el movimiento (spin).
+        canvas_el.addEventListener('mousedown',function(e){ //Listener para mouse
+            dragStart = {
+              x: e.pageX,
+              y: e.pageY
+            }
+            drag = true;            
+        });
+        canvas_el.addEventListener('mousemove',function(e){ //Listener para mouse
+            if (drag) {
+                dragEnd = {
+                  x: e.pageX,
+                  y: e.pageY
+                }                    
+            }
+            gp.rot_x += (dragEnd.y - dragStart.y)/100;
+            gp.rot_y += (dragEnd.x - dragStart.x)/100;
+            dragStart = dragEnd;
+        });
+        canvas_el.addEventListener('mouseup',function(e) { //Listener para mouse
+            drag = false;
+        });
+        
+        canvas_el.addEventListener('touchstart', function(e){ //Listener para touch
+            dragStart = {
+                x: e.changedTouches[0].pageX,
+                y: e.changedTouches[0].pageY
+            }
+            drag = true;
+        });
+        
+        canvas_el.addEventListener('touchmove', function(e){ //Listener para touch
+            e.preventDefault();            
+                dragEnd = {
+                    x: e.changedTouches[0].pageX,
+                    y: e.changedTouches[0].pageY
+                }            
+            gp.rot_x += (dragEnd.y - dragStart.y)/100; 
+            gp.rot_y += (dragEnd.x - dragStart.x)/100;
+            dragStart = dragEnd;
+        });
 
         parentNode.appendChild( canvas_el );
 
         var num = 8.0,
             keys = [];
 
-        function update() {
+            function update() {
 
             if (keys[38]) { //Andres: Zoom in with ArrowUp key.
                 if (num > 2.0){
@@ -184,6 +230,7 @@ function Universe() {
             if (keys[87]) { //Andres: Restart spin with W key.
                 spin = true;
             }
+            
             updateScale();
             setTimeout(update, 10);
         }
@@ -194,7 +241,7 @@ function Universe() {
         }
 
         update();
-
+        
         document.body.addEventListener('keydown', function (e) { //Andres: Listener para keydown.
             keys[e.keyCode] = true;
         });
@@ -246,7 +293,10 @@ function startover() {
             g = COLORSTEP;
             b = COLORSTEP;
         }
+
+        //if((r == 255 & g == 0 & b == 0) && (r == 0 & g == 0 & b == 255)){
         gt.galcol = "#" + r.toString(16) + g.toString(16) + b.toString(16);
+        //}
 
         var nstars = (NRAND( MAX_STARS / 2 )) + MAX_STARS / 2;
         gt.stars = [];
@@ -354,7 +404,7 @@ function init_galaxy() {
 
 function draw_galaxy() {
     var gp = universe;
-    var d, eps, cox, six, cor, sir;  /* tmp */
+    var d, eps, cox, six, cor, sir, coz, siz;  /* tmp */
     var i, j, k; /* more tmp */
     var dummy = null;
 
@@ -363,14 +413,15 @@ function draw_galaxy() {
     }
 
     if( spin ) {
-        gp.rot_y += 0.01;
-        gp.rot_x += 0.004;
+        gp.rot_y += 0.02;
+        gp.rot_x += 0.00;
     }
 
     cox = Math.cos( gp.rot_y );
     six = Math.sin( gp.rot_y );
     cor = Math.cos( gp.rot_x );
     sir = Math.sin( gp.rot_x );
+
 
     eps = 1/(EPSILON * sqrt_EPSILON * DELTAT * DELTAT * QCONS);
 
@@ -412,12 +463,9 @@ function draw_galaxy() {
             st.pos.z += v2;
             } 
 
-            newp.x = (((cox * st.pos.x) - (six * st.pos.z)) *
-                gp.scale) + gp.midx;
-            newp.y = (((cor * st.pos.y) - (sir * ((six * st.pos.x) +
-                (cox * st.pos.z))))
-                * gp.scale) + gp.midy;
-        }
+            newp.x = (((cox * st.pos.x) - (six * st.pos.z)) * gp.scale) + gp.midx;
+            newp.y = (((cor * st.pos.y) - (sir * ((six * st.pos.x) + (cox * st.pos.z)))) * gp.scale) + gp.midy;
+        } 
 
         for( k = i + 1; k < gp.galaxies.length; ++k ) {
             gtk = gp.galaxies[k];
