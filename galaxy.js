@@ -58,7 +58,8 @@ var batchcount = 2; /* Original -5. */
 var cycles = 250;
 var tracks = false;
 var spin = true;
-var simu = true; /*Andres: variable simu para ejecutar o detener simulación.*/
+var simu = true; //Andres: variable simu para ejecutar o detener simulación.
+var simuback = false; //Andres: variable simuback para playback.
 
 function FLOATRAND() {
     return Math.random();
@@ -94,6 +95,7 @@ var COLORSTEP = Math.round( 0xFFF / NUMCOLORS )
 function XPoint() {
     this.x = 0;
     this.y = 0;
+    this.z = 0; //Andres: agrega punto z
 }
 
 function Star() {
@@ -128,11 +130,13 @@ function Galaxy() {
 }
 
 var canvas_el, canvas_ctx;
+var a = 20; //Parámetro para Menú de Comandos.
 function Universe() {
     this.mat = new Array( new Array(3), new Array(3), new Array(3) ); /* Movement of stars(?) */
     this.scale = 0.0; /* Scale */
     this.midx = 0; /* Middle of screen, x */
     this.midy = 0; /* Middle of screen, y */
+    this.midz = 0; // Andres: crea midz
     this.size = 0.0; /* */
     this.diff = []; /* array of doubles */
     this.galaxies = null; /* the Whole Universe */
@@ -149,29 +153,35 @@ function Universe() {
         canvas_el.style.cssText = 'background-color: black; position: absolute; z-index: 500;';
         canvas_ctx = canvas_el.getContext( '2d' );
         
+        parentNode.appendChild( canvas_el );
+
         var drag = false; //Para los mouse listener crea: drag, dragStart, dragEnd.
         var dragStart;
         var dragEnd;
         var gp = universe; //Para manipular el movimiento (spin).
-        canvas_el.addEventListener('mousedown',function(e){ //Listener para mouse
+
+        
+        canvas_el.addEventListener('mousedown',function(e){ //Listener para pointer
             dragStart = {
-              x: e.pageX,
-              y: e.pageY
+                x: e.screenX,
+                y: e.screenY
             }
-            drag = true;            
+            drag = true;
         });
-        canvas_el.addEventListener('mousemove',function(e){ //Listener para mouse
+
+        canvas_el.addEventListener('mousemove',function(e){ //Listener para pointer
             if (drag) {
                 dragEnd = {
-                  x: e.pageX,
-                  y: e.pageY
-                }                    
+                    x: e.screenX,
+                    y: e.screenY
+                }
             }
             gp.rot_x += (dragEnd.y - dragStart.y)/100;
             gp.rot_y += (dragEnd.x - dragStart.x)/100;
             dragStart = dragEnd;
         });
-        canvas_el.addEventListener('mouseup',function(e) { //Listener para mouse
+
+        canvas_el.addEventListener('mouseup',function(e) { //Listener para pointer
             drag = false;
         });
         
@@ -194,12 +204,33 @@ function Universe() {
             dragStart = dragEnd;
         });
 
-        parentNode.appendChild( canvas_el );
+        canvas_el.addEventListener('pointerdown', function(e) {
+            var r = this.getBoundingClientRect(),
+                x = e.clientX - r.left,
+                y = e.clientY - r.top;
+            if (x >= canvas_el.width / 2 - a/10 - a && x < canvas_el.width / 2 + a/10 + a && y >= canvas_el.height / 2 + 370 - 2*a && y < canvas_el.height / 2 + 370) {
+                simu = false; 
+                simuback = false;
+            }
+        })
 
-        var num = 8.0,
-            keys = [];
+        canvas_el.addEventListener('pointerdown', function(e) {
+            var r = this.getBoundingClientRect(),
+                x = e.clientX - r.left,
+                y = e.clientY - r.top;
+            if (x >= canvas_el.width / 2 + 3*a && x < canvas_el.width / 2 + 5*a && y >= canvas_el.height / 2 + 370 - 2*a && y < canvas_el.height / 2 + 370) simu = true;
+        })
+        /*
+        canvas_el.addEventListener('pointerdown', function(e) {
+            var r = this.getBoundingClientRect(),
+                x = e.clientX - r.left,
+                y = e.clientY - r.top;
+            if (x >= canvas_el.width / 2 - 5*a && x < canvas_el.width / 2 - 3*a && y >= canvas_el.height / 2 + 370 - 2*a && y < canvas_el.height / 2 + 370) simuback = true;
+        })*/
+        
+        var num = 8.0, keys = [];
 
-            function update() {
+        function update() {
 
             if (keys[38]) { //Andres: Zoom in with ArrowUp key.
                 if (num > 2.0){
@@ -267,6 +298,7 @@ function startover() {
     gp.step = 0;
     gp.rot_y = 0;
     gp.rot_x = 0;
+    gp.rot_z = 0; /* Andres: agregando rotacion z. */
 
     var ngalaxies = batchcount;
     if( ngalaxies < -MINGALAXIES ) {
@@ -399,6 +431,7 @@ function init_galaxy() {
     gp.scale = (canvas_el.width + canvas_el.height) / num; //Andres: Original 8.0
     gp.midx =  canvas_el.width  / 2;
     gp.midy =  canvas_el.height / 2;
+    gp.midz =  canvas_el.deep / 2; //Andres: crea gp.midz
     startover();
 }
 
@@ -415,12 +448,15 @@ function draw_galaxy() {
     if( spin ) {
         gp.rot_y += 0.02;
         gp.rot_x += 0.00;
+        gp.rot_z += 0.00; /* Andres: agregando rotacion z. */
     }
 
     cox = Math.cos( gp.rot_y );
     six = Math.sin( gp.rot_y );
     cor = Math.cos( gp.rot_x );
     sir = Math.sin( gp.rot_x );
+    coz = Math.cos( gp.rot_z ); //
+    siz = Math.sin( gp.rot_z ); //
 
 
     eps = 1/(EPSILON * sqrt_EPSILON * DELTAT * DELTAT * QCONS);
@@ -465,6 +501,7 @@ function draw_galaxy() {
 
             newp.x = (((cox * st.pos.x) - (six * st.pos.z)) * gp.scale) + gp.midx;
             newp.y = (((cor * st.pos.y) - (sir * ((six * st.pos.x) + (cox * st.pos.z)))) * gp.scale) + gp.midy;
+            newp.z = (((cor * st.pos.y) - (sir * ((six * st.pos.x) + (cox * st.pos.z)))) * gp.scale) + gp.midz; /* Andres: testing... */
         } 
 
         for( k = i + 1; k < gp.galaxies.length; ++k ) {
@@ -504,6 +541,20 @@ function draw_galaxy() {
             } else {
             XDrawPoints( gt ); /*Andres: si simu FALSE, dibuja los puntos, pero no actualiza variables.*/
         }
+        /*
+        if (simuback){ //Andres: si back es TRUE dibuja los puntos y actualiza variables.
+            gt.pos.x -= gt.vel.x * DELTAT;
+            gt.pos.y -= gt.vel.y * DELTAT;
+            gt.pos.z -= gt.vel.z * DELTAT;
+
+            XDrawPoints( gt );
+
+            dummy = gt.oldpoints;
+            gt.oldpoints = gt.newpoints;
+            gt.newpoints = dummy;
+            } else {
+            XDrawPoints( gt ); //Andres: si back FALSE, dibuja los puntos, pero no actualiza variables.
+            }*/
 
     }
 
@@ -511,6 +562,42 @@ function draw_galaxy() {
     if( gp.step > gp.f_hititerations * 4 ) {
         startover();
     }
+
+    XMenu();
+}
+
+function XMenu(){ /* Andres: Crea Menu de Comandos. */
+    var PBX = canvas_el.width / 2 - 3*a; //Comando PB Play Backward
+    var PBY = canvas_el.height / 2 + 370;
+    var PAX = canvas_el.width / 2; //Comando PA Pause 
+    var PAY = canvas_el.height / 2 + 370;
+    var PFX = canvas_el.width / 2 + 3*a; //Comando PF Play Forward 
+    var PFY = canvas_el.height / 2 + 370;
+    /*
+    canvas_ctx.beginPath();
+    canvas_ctx.moveTo(PBX, PBY);
+    canvas_ctx.lineTo(PBX, PBY-2*a);
+    canvas_ctx.lineTo(PBX-Math.sqrt(4*a*a-a*a), PBY-a); //sqrt(4*a*a-a*a)
+    canvas_ctx.closePath();
+    canvas_ctx.lineWidth = a/6;
+    canvas_ctx.strokeStyle = '#FF0000';
+    canvas_ctx.stroke();*/
+
+    canvas_ctx.beginPath();
+    canvas_ctx.moveTo(PFX, PFY);
+    canvas_ctx.lineTo(PFX, PFY-2*a);
+    canvas_ctx.lineTo(PFX+Math.sqrt(4*a*a-a*a), PFY-a); //sqrt(4*a*a-a*a)
+    canvas_ctx.closePath();
+    canvas_ctx.lineWidth = a/6;
+    canvas_ctx.strokeStyle = '#FF0000';
+    canvas_ctx.stroke();
+
+    canvas_ctx.beginPath();
+    canvas_ctx.rect(PAX-a/10, PAY, -a, -2*a);
+    canvas_ctx.rect(PAX+a/10+a, PAY, -a, -2*a);
+    canvas_ctx.lineWidth = a/6;
+    canvas_ctx.strokeStyle = '#FF0000';
+    canvas_ctx.stroke();
 }
 
 function XDrawPoints( gt ) {
