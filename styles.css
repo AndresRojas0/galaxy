@@ -1,0 +1,45 @@
+* {
+  outline: 0;
+}
+
+body {
+  background-color: #000;
+  color: #fff;
+  font: 10pt lucida console, monospace;
+  margin: 0;
+}
+
+a {
+  color: #fff;
+  opacity: 0.25;
+}
+a:hover {
+  opacity: 1;
+}
+
+canvas {
+  border-width: 0;
+
+  position: absolute; left: 50%; top: 50%; /* magic vertical-align */
+  margin-left: -960px; /* width / 2 */
+  margin-top: -540px; /* height / 2 */
+
+  image-rendering: optimizeSpeed;
+  -webkit-interpolation-mode: nearest-neighbor;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: absolute;
+  top: 16px;
+}
+
+#actions {
+  left: 16px;
+}
+
+#resolutions {
+  right: 16px;
+}
